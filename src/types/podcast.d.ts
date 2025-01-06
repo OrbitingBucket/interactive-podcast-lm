@@ -18,4 +18,10 @@ export interface DynamicSegment {
   audioSrc?: string;
 }
 
-export type PodcastSegment = PreRecordedSegment | DynamicSegment;
+export interface PodcastFlowProps {
+    preRecordedSegments: PreRecordedSegment[];
+  }
+
+export type PodcastSegment = PreRecordedSegment | DynamicSegment | PodcastFlowProps;
+
+export type QAState = 'inactive' | 'waiting' | 'listening';
