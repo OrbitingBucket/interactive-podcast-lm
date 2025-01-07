@@ -5,7 +5,7 @@ import { useAudioQueue } from './useAudioQueue';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { processWithFlowise } from '../utils/flowise';
 import { generateSpeech } from '../utils/elevenlabs';
-import { PodcastSegment, PreRecordedSegment, GeneratedSegment } from '../types/podcast';
+import { PreRecordedSegment, GeneratedSegment } from '../types/podcast';
 import { preRecordedSegments } from '../data/segments';
 
 const INVITATION_SEGMENT: PreRecordedSegment = {
@@ -85,10 +85,10 @@ export const usePodcastOrchestrator = () => {
               throw new Error('No response received from Flowise');
             }
 
-            // Generate speech stream
+            // Generate speech from response
             console.log('Generating speech from response');
             const audioStream = await generateSpeech(flowiseResponse);
-            console.log('Speech stream generated successfully');
+            console.log('Speech generated successfully');
 
             // Create answer segment
             const answerSegment: GeneratedSegment = {
@@ -108,9 +108,12 @@ export const usePodcastOrchestrator = () => {
             dispatch({ type: 'SET_PHASE', payload: 'ANSWERING' });
           } catch (error) {
             console.error('Error processing response:', error);
+            const errorMessage = error instanceof Error
+              ? error.message
+              : 'An unknown error occurred';
             dispatch({
               type: 'SET_ERROR',
-              payload: `Failed to process question: ${error.message}`
+              payload: `Failed to process question: ${errorMessage}`
             });
             dispatch({ type: 'SET_PHASE', payload: 'PLAYING' });
           }
@@ -121,9 +124,12 @@ export const usePodcastOrchestrator = () => {
       }
     } catch (error) {
       console.error('Error in handleRaiseHand:', error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'An unknown error occurred';
       dispatch({
         type: 'SET_ERROR',
-        payload: error instanceof Error ? error.message : 'An unknown error occurred'
+        payload: `Error handling question: ${errorMessage}`
       });
       dispatch({ type: 'SET_PHASE', payload: 'PLAYING' });
     }

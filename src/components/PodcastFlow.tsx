@@ -4,6 +4,7 @@ import { AudioFlow } from './AudioFlow';
 import { QuestionFlow } from './QuestionFlow';
 import { RaiseHandButton } from './RaiseHandButton';
 import { usePodcastOrchestrator } from '../hooks/usePodcastOrchestrator';
+import { TestAudio } from './TestAudio';  // Import the TestAudio component
 
 export const PodcastFlow: React.FC = () => {
   const { 
@@ -17,6 +18,9 @@ export const PodcastFlow: React.FC = () => {
 
   return (
     <div className="podcast-flow max-w-4xl mx-auto p-4">
+      {/* Render the TestAudio component for testing */}
+      <TestAudio />
+
       <AudioFlow onSegmentEnd={handleSegmentEnd} />
       
       {isQuestionMode && (

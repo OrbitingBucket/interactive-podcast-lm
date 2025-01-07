@@ -19,7 +19,8 @@ export interface GeneratedSegment {
   id: string;
   type: 'generated';
   text: string;
-  audioStream: MediaStream;
+  audioSrc?: string;
+  audioStream?: Blob;
 }
 
 export type PodcastSegment = PreRecordedSegment | GeneratedSegment;
