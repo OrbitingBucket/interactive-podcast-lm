@@ -1,27 +1,44 @@
-// src/types/podcast.d.ts
-
-export type SegmentType = "prerecorded" | "dynamic";
+// src/types/podcast.ts
+export type PodcastPhase = 
+  | 'INITIAL'
+  | 'PLAYING'
+  | 'INVITATION'
+  | 'LISTENING'
+  | 'PROCESSING'
+  | 'ANSWERING';
 
 export interface PreRecordedSegment {
   id: string;
-  type: "prerecorded";
-  host: "Host1" | "Host2";
+  type: 'prerecorded';
+  host: string;
   audioFile: string;
   script: string;
 }
 
-export interface DynamicSegment {
+export interface GeneratedSegment {
   id: string;
-  type: "dynamic";
-  host: "Host1" | "Host2";
+  type: 'generated';
   text: string;
-  audioSrc?: string;
+  audioStream: MediaStream;
 }
 
-export interface PodcastFlowProps {
-    preRecordedSegments: PreRecordedSegment[];
-  }
+export type PodcastSegment = PreRecordedSegment | GeneratedSegment;
 
-export type PodcastSegment = PreRecordedSegment | DynamicSegment | PodcastFlowProps;
-
-export type QAState = 'inactive' | 'waiting' | 'listening';
+export interface PodcastState {
+  currentPhase: PodcastPhase;
+  segments: PodcastSegment[];
+  currentSegmentIndex: number;
+  recognition: {
+    isActive: boolean;
+    transcript: string;
+  };
+  flowise: {
+    isProcessing: boolean;
+    chunks: string[];
+  };
+  tts: {
+    isGenerating: boolean;
+    isPlaying: boolean;
+  };
+  error: string | null;
+}

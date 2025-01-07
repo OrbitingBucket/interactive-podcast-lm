@@ -2,15 +2,15 @@
 
 import React from 'react';
 import { PodcastFlow } from './components/PodcastFlow';
-import { preRecordedSegments } from './data/segments';
+import { PodcastProvider } from './store/PodcastContext';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="container mx-auto">
-        <PodcastFlow preRecordedSegments={preRecordedSegments} />
+    <PodcastProvider>
+      <div className="app min-h-screen bg-gray-50">
+        <PodcastFlow />
       </div>
-    </div>
+    </PodcastProvider>
   );
 }
 
