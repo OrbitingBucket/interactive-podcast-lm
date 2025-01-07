@@ -20,7 +20,7 @@ export interface GeneratedSegment {
   type: 'generated';
   text: string;
   audioSrc?: string;
-  audioStream?: Blob;
+  audioStream?: ReadableStream<Uint8Array>;
 }
 
 export type PodcastSegment = PreRecordedSegment | GeneratedSegment;

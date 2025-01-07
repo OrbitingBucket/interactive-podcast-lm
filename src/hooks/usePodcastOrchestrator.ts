@@ -85,27 +85,58 @@ export const usePodcastOrchestrator = () => {
               throw new Error('No response received from Flowise');
             }
 
-            // Generate speech from response
-            console.log('Generating speech from response');
-            const audioStream = await generateSpeech(flowiseResponse);
-            console.log('Speech generated successfully');
+          // Generate speech from response
+          console.log('Generating speech from response');
+          const audioBlob = await generateSpeech(flowiseResponse);
+          console.log('Speech generated successfully');
 
-            // Create answer segment
-            const answerSegment: GeneratedSegment = {
-              id: `answer-${Date.now()}`,
-              type: 'generated',
-              text: flowiseResponse,
-              audioStream
-            };
+          // Create answer segment
+          const answerSegment: GeneratedSegment = {
+            id: `answer-${Date.now()}`,
+            type: 'generated',
+            text: flowiseResponse,
+            audioStream: audioBlob.stream()
+          };
 
-            // Add answer segment to queue
-            console.log('Adding answer segment to queue');
-            dispatch({
-              type: 'SET_SEGMENTS',
-              payload: [...state.segments, answerSegment]
-            });
-
-            dispatch({ type: 'SET_PHASE', payload: 'ANSWERING' });
+          // Add answer segment to queue and start playing
+          console.log('Adding answer segment to queue');
+          const newSegments = [...state.segments, answerSegment];
+          const newIndex = newSegments.length - 1;
+          
+          console.log('Current segments:', state.segments.map(s => s.id));
+          console.log('Adding new segment:', answerSegment.id);
+          console.log('New index will be:', newIndex);
+          
+          // Update state in a specific order to ensure proper transitions
+          console.log('Starting state update sequence');
+          
+          // 1. First update segments array
+          console.log('1. Updating segments array');
+          dispatch({
+            type: 'SET_SEGMENTS',
+            payload: newSegments
+          });
+          
+          // 2. Set phase to ANSWERING before changing current segment
+          console.log('2. Setting phase to ANSWERING');
+          dispatch({ type: 'SET_PHASE', payload: 'ANSWERING' });
+          
+          // Small delay to ensure state updates are processed
+          await new Promise(resolve => setTimeout(resolve, 0));
+          
+          // 3. Finally set current segment to trigger audio player
+          console.log('3. Setting current segment index');
+          dispatch({
+            type: 'SET_CURRENT_SEGMENT',
+            payload: newIndex
+          });
+          
+          console.log('State update sequence complete');
+          console.log('Current state:', {
+            phase: state.currentPhase,
+            currentIndex: state.currentSegmentIndex,
+            totalSegments: state.segments.length
+          });
           } catch (error) {
             console.error('Error processing response:', error);
             const errorMessage = error instanceof Error
@@ -136,11 +167,14 @@ export const usePodcastOrchestrator = () => {
   }, [state.currentPhase, state.segments, state.currentSegmentIndex]);
 
   const handleSegmentEnd = useCallback(async () => {
-    console.log('Segment ended:', state.segments[state.currentSegmentIndex]?.id);
+    const currentSegment = state.segments[state.currentSegmentIndex];
+    console.log('Segment ended:', currentSegment?.id);
     console.log('Current phase:', state.currentPhase);
+    console.log('Current segment type:', currentSegment?.type);
+    console.log('Total segments:', state.segments.length);
     
     // Check if invitation segment just ended
-    if (state.segments[state.currentSegmentIndex]?.id === 'question-invite') {
+    if (currentSegment?.id === 'question-invite') {
       console.log('Invitation segment ended, starting listening phase');
       dispatch({ type: 'SET_PHASE', payload: 'LISTENING' });
       try {
@@ -168,12 +202,21 @@ export const usePodcastOrchestrator = () => {
     if (state.currentPhase === 'ANSWERING') {
       console.log('Answer segment ended, returning to PLAYING phase');
       dispatch({ type: 'SET_PHASE', payload: 'PLAYING' });
+      
+      // Move to next segment if available
+      const nextIndex = state.currentSegmentIndex + 1;
+      if (nextIndex < state.segments.length) {
+        console.log('Moving to next segment after answer:', nextIndex);
+        dispatch({ type: 'SET_CURRENT_SEGMENT', payload: nextIndex });
+      }
+      return;
     }
 
-    // Move to next segment if available
+    // Move to next segment if available (for non-answer segments)
     const nextIndex = state.currentSegmentIndex + 1;
     if (nextIndex < state.segments.length) {
       console.log('Moving to next segment:', nextIndex);
+      console.log('Next segment will be:', state.segments[nextIndex]?.id);
       dispatch({ type: 'SET_CURRENT_SEGMENT', payload: nextIndex });
     } else {
       console.log('No more segments available');
