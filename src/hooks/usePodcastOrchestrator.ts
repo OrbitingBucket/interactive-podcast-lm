@@ -1,5 +1,6 @@
 // src/hooks/usePodcastOrchestrator.ts
-import { useCallback, useEffect, useRef } from 'react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePodcastContext } from '../store/PodcastContext';
 import { useAudioQueue } from './useAudioQueue';
 import { useSpeechRecognition } from './useSpeechRecognition';
@@ -21,6 +22,14 @@ export const usePodcastOrchestrator = () => {
   const audioQueue = useAudioQueue();
   const speechRecognition = useSpeechRecognition();
   const pendingInvitation = useRef(false);
+  
+  // Add isPlaying state
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Toggle Play/Pause
+  const togglePlayPause = useCallback(() => {
+    setIsPlaying(prev => !prev);
+  }, []);
 
   // Initialize podcast with pre-recorded segments
   useEffect(() => {
@@ -29,7 +38,7 @@ export const usePodcastOrchestrator = () => {
       dispatch({ type: 'SET_SEGMENTS', payload: preRecordedSegments });
       dispatch({ type: 'SET_PHASE', payload: 'PLAYING' });
     }
-  }, []);
+  }, [state.currentPhase, dispatch]);
 
   // Cleanup function
   useEffect(() => {
@@ -40,7 +49,7 @@ export const usePodcastOrchestrator = () => {
         audioQueue.currentAudioRef.current.srcObject = null;
       }
     };
-  }, []);
+  }, [audioQueue]);
 
   const handleRaiseHand = useCallback(async () => {
     console.log('Raise hand clicked, current phase:', state.currentPhase);
@@ -85,58 +94,58 @@ export const usePodcastOrchestrator = () => {
               throw new Error('No response received from Flowise');
             }
 
-          // Generate speech from response
-          console.log('Generating speech from response');
-          const audioBlob = await generateSpeech(flowiseResponse);
-          console.log('Speech generated successfully');
+            // Generate speech from response
+            console.log('Generating speech from response');
+            const audioBlob = await generateSpeech(flowiseResponse);
+            console.log('Speech generated successfully');
 
-          // Create answer segment
-          const answerSegment: GeneratedSegment = {
-            id: `answer-${Date.now()}`,
-            type: 'generated',
-            text: flowiseResponse,
-            audioStream: audioBlob.stream()
-          };
+            // Create answer segment
+            const answerSegment: GeneratedSegment = {
+              id: `answer-${Date.now()}`,
+              type: 'generated',
+              text: flowiseResponse,
+              audioStream: audioBlob.stream()
+            };
 
-          // Add answer segment to queue and start playing
-          console.log('Adding answer segment to queue');
-          const newSegments = [...state.segments, answerSegment];
-          const newIndex = newSegments.length - 1;
-          
-          console.log('Current segments:', state.segments.map(s => s.id));
-          console.log('Adding new segment:', answerSegment.id);
-          console.log('New index will be:', newIndex);
-          
-          // Update state in a specific order to ensure proper transitions
-          console.log('Starting state update sequence');
-          
-          // 1. First update segments array
-          console.log('1. Updating segments array');
-          dispatch({
-            type: 'SET_SEGMENTS',
-            payload: newSegments
-          });
-          
-          // 2. Set phase to ANSWERING before changing current segment
-          console.log('2. Setting phase to ANSWERING');
-          dispatch({ type: 'SET_PHASE', payload: 'ANSWERING' });
-          
-          // Small delay to ensure state updates are processed
-          await new Promise(resolve => setTimeout(resolve, 0));
-          
-          // 3. Finally set current segment to trigger audio player
-          console.log('3. Setting current segment index');
-          dispatch({
-            type: 'SET_CURRENT_SEGMENT',
-            payload: newIndex
-          });
-          
-          console.log('State update sequence complete');
-          console.log('Current state:', {
-            phase: state.currentPhase,
-            currentIndex: state.currentSegmentIndex,
-            totalSegments: state.segments.length
-          });
+            // Add answer segment to queue and start playing
+            console.log('Adding answer segment to queue');
+            const newSegments = [...state.segments, answerSegment];
+            const newIndex = newSegments.length - 1;
+            
+            console.log('Current segments:', state.segments.map(s => s.id));
+            console.log('Adding new segment:', answerSegment.id);
+            console.log('New index will be:', newIndex);
+            
+            // Update state in a specific order to ensure proper transitions
+            console.log('Starting state update sequence');
+            
+            // 1. First update segments array
+            console.log('1. Updating segments array');
+            dispatch({
+              type: 'SET_SEGMENTS',
+              payload: newSegments
+            });
+            
+            // 2. Set phase to ANSWERING before changing current segment
+            console.log('2. Setting phase to ANSWERING');
+            dispatch({ type: 'SET_PHASE', payload: 'ANSWERING' });
+            
+            // Small delay to ensure state updates are processed
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // 3. Finally set current segment to trigger audio player
+            console.log('3. Setting current segment index');
+            dispatch({
+              type: 'SET_CURRENT_SEGMENT',
+              payload: newIndex
+            });
+            
+            console.log('State update sequence complete');
+            console.log('Current state:', {
+              phase: state.currentPhase,
+              currentIndex: state.currentSegmentIndex,
+              totalSegments: state.segments.length
+            });
           } catch (error) {
             console.error('Error processing response:', error);
             const errorMessage = error instanceof Error
@@ -164,7 +173,7 @@ export const usePodcastOrchestrator = () => {
       });
       dispatch({ type: 'SET_PHASE', payload: 'PLAYING' });
     }
-  }, [state.currentPhase, state.segments, state.currentSegmentIndex]);
+  }, [state.currentPhase, state.segments, state.currentSegmentIndex, dispatch, speechRecognition]);
 
   const handleSegmentEnd = useCallback(async () => {
     const currentSegment = state.segments[state.currentSegmentIndex];
@@ -220,12 +229,13 @@ export const usePodcastOrchestrator = () => {
       dispatch({ type: 'SET_CURRENT_SEGMENT', payload: nextIndex });
     } else {
       console.log('No more segments available');
+      // Optionally, you can reset the podcast or set a final phase
     }
-  }, [state.currentPhase, state.currentSegmentIndex, state.segments]);
+  }, [state.currentPhase, state.currentSegmentIndex, state.segments, dispatch, speechRecognition]);
 
   const clearError = useCallback(() => {
     dispatch({ type: 'SET_ERROR', payload: null });
-  }, []);
+  }, [dispatch]);
 
   return {
     state,
@@ -238,5 +248,7 @@ export const usePodcastOrchestrator = () => {
     ),
     canRaiseHand: ['PLAYING', 'LISTENING'].includes(state.currentPhase),
     transcription: state.recognition.transcript,
+    isPlaying, // Expose isPlaying
+    togglePlayPause, // Expose togglePlayPause
   };
 };

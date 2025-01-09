@@ -1,52 +1,59 @@
-// src/components/PodcastFlow.tsx
 import React from 'react';
-import { AudioFlow } from './AudioFlow';
-import { QuestionFlow } from './QuestionFlow';
+import AudioPlayer from './AudioPlayer';
 import { RaiseHandButton } from './RaiseHandButton';
 import { usePodcastOrchestrator } from '../hooks/usePodcastOrchestrator';
-import { TestAudio } from './TestAudio';  // Import the TestAudio component
+import PlayerControlsButton from './PlayerControlsButton';
 
 export const PodcastFlow: React.FC = () => {
   const { 
-    state, 
     handleRaiseHand, 
-    handleSegmentEnd,
-    transcription,
+    handleSegmentEnd, 
     canRaiseHand,
-    isQuestionMode
+    state,
+    isPlaying,
+    togglePlayPause,
   } = usePodcastOrchestrator();
 
-  return (
-    <div className="podcast-flow max-w-4xl mx-auto p-4">
-      {/* Render the TestAudio component for testing */}
-      <TestAudio />
+  const currentSegment = state.segments[state.currentSegmentIndex];
 
-      <AudioFlow onSegmentEnd={handleSegmentEnd} />
+  return (
+    <div className="podcast-flow w-full flex flex-col items-center justify-center flex-1 relative">
       
-      {isQuestionMode && (
-        <div className="question-mode-container mt-4">
-          <QuestionFlow />
-          {state.currentPhase === 'LISTENING' && (
-            <div className="transcription-container p-4 bg-gray-100 rounded-lg mt-4">
-              <h3 className="text-lg font-semibold mb-2">Question :</h3>
-              <p className="text-gray-700">{transcription || 'Parlez maintenant...'}</p>
-            </div>
-          )}
-        </div>
-      )}
-      
-      <div className="fixed bottom-8 right-8">
-        <RaiseHandButton 
+
+
+      {/* Audio Player */}
+      {currentSegment ? (
+        <AudioPlayer 
+          segment={currentSegment} 
+          onSegmentEnd={handleSegmentEnd} 
           onRaiseHand={handleRaiseHand}
           disabled={!canRaiseHand}
+          liveTranscription={state.recognition.transcript}
+          isPlaying={isPlaying}
+          togglePlayPause={togglePlayPause}
         />
+      ) : (
+        <div className="text-white">Loading podcast...</div>
+      )}
+
+      {/* Raise Hand Button */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto">
+          <RaiseHandButton 
+            onRaiseHand={handleRaiseHand}
+            disabled={!canRaiseHand}
+          />
+        </div>
       </div>
-      
+
+      {/* Error Message */}
       {state.error && (
-        <div className="error-message fixed top-4 right-4 bg-red-500 text-white p-4 rounded">
+        <div className="absolute top-4 right-4 bg-red-500 text-white p-4 rounded">
           {state.error}
         </div>
       )}
     </div>
   );
 };
+
+export default PodcastFlow;

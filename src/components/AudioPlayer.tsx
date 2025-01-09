@@ -1,8 +1,11 @@
 // src/components/AudioPlayer.tsx
+
 import React, { useRef, useEffect, useState } from 'react';
 import { PodcastSegment, GeneratedSegment } from '../types/podcast';
 import { RaiseHandButton } from './RaiseHandButton';
 import { usePodcastContext } from '../store/PodcastContext';
+import AudioVisualizer from './visualizer/AudioVisualizer';
+import PlayerControlsButton from './PlayerControlsButton'; // Import the new component
 
 interface AudioPlayerProps {
   segment: PodcastSegment;
@@ -10,6 +13,8 @@ interface AudioPlayerProps {
   onRaiseHand?: () => void;
   disabled?: boolean;
   liveTranscription?: string;
+  isPlaying: boolean; // Receive isPlaying prop
+  togglePlayPause: () => void; // Receive togglePlayPause prop
 }
 
 const isGeneratedSegmentWithStream = (
@@ -23,7 +28,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onSegmentEnd,
   onRaiseHand,
   disabled,
-  liveTranscription 
+  liveTranscription,
+  isPlaying,
+  togglePlayPause
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +54,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       if (mediaSourceRef.current) {
         mediaSourceRef.current = null;
       }
+      setIsLoading(true);
     };
 
     const setupAudio = async () => {
@@ -64,8 +72,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           const source = `/audio/${segment.audioFile}`;
           console.log('Loading prerecorded audio:', source);
           audio.src = source;
-          await audio.play();
           setIsLoading(false);
+          // Auto-play if isPlaying is true
+          if (isPlaying) {
+            await audio.play();
+          }
         } else if (isGeneratedSegmentWithStream(segment)) {
           console.log('Setting up streaming audio');
 
@@ -106,9 +117,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
               if (isSubscribed) {
                 console.log('Stream processing complete, ending stream');
                 mediaSource.endOfStream();
-                console.log('Starting audio playback');
-                await audio.play();
                 setIsLoading(false);
+                // Auto-play if isPlaying is true
+                if (isPlaying) {
+                  await audio.play();
+                }
               }
             } catch (err) {
               console.error('Error in sourceopen handler:', err);
@@ -132,8 +145,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           // Fallback for direct URL sources
           console.log('Loading audio from URL:', segment.audioSrc);
           audio.src = segment.audioSrc;
-          await audio.play();
           setIsLoading(false);
+          // Auto-play if isPlaying is true
+          if (isPlaying) {
+            await audio.play();
+          }
         }
 
       } catch (err) {
@@ -151,7 +167,21 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       isSubscribed = false;
       cleanupAudio();
     };
-  }, [segment]);
+  }, [segment, isPlaying]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.play().catch(err => {
+        console.error('Failed to play audio:', err);
+        setError('Unable to play audio.');
+      });
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
 
   const handleEnded = () => {
     console.log('Audio ended:', segment.id);
@@ -174,65 +204,97 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setIsLoading(false);
   };
 
+  // Remove local isPlaying state and togglePlayPause
+
+  // Defensive Check: Ensure segment is defined
+  if (!segment) {
+    return <div className="text-white">No audio segment available.</div>; // Optional: Alternative Loading or Error Message
+  }
+
   return (
-    <div className="audio-player w-full max-w-2xl mx-auto p-4 bg-white rounded-lg shadow relative">
-      {isLoading && (
-        <div className="loading-indicator text-blue-500 text-center mb-2">
-          Loading audio...
-        </div>
-      )}
-      
-      <audio 
-        ref={audioRef} 
-        onEnded={handleEnded}
-        onError={handleError}
-        controls 
-        className="w-full mb-4"
-      />
-      
-      {error && (
-        <div className="text-red-500 text-sm mb-2">
-          {error}
-        </div>
-      )}
-      
-      <div className="text-content mt-4">
-        {state.currentPhase === 'LISTENING' && liveTranscription ? (
-          <div className="live-transcription bg-gray-50 p-3 rounded">
-            <h3 className="text-lg font-semibold mb-2">Question en cours :</h3>
-            <p className="text-gray-700">{liveTranscription}</p>
+    <div className="relative w-full flex flex-col items-center justify-center">
+      {/* Flex Container for Controls and Visualizer */}
+      <div className="flex flex-row items-center space-x-4 md:space-x-6">
+        {/* Player Controls Button */}
+        <PlayerControlsButton
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlayPause}
+          disabled={isLoading || !!error}
+          ariaLabel={isPlaying ? "Pause" : "Play"}
+        />
+
+        {/* Audio Visualizer */}
+        <AudioVisualizer audioElement={audioRef.current} className="w-full max-w-md" />
+      </div>
+
+      {/* Main Player UI */}
+      <div className="audio-player w-full max-w-2xl mx-auto p-4 bg-gray-800 bg-opacity-75 rounded-lg shadow relative z-10 mt-8">
+        {isLoading && (
+          <div className="loading-indicator text-blue-500 text-center mb-2">
+            Loading audio...
           </div>
-        ) : (
-          <div className={`script ${
-            segment.type === 'generated' ? 'bg-blue-50' : ''
-          } p-3 rounded`}>
-            <h3 className="text-lg font-semibold mb-2">
-              {segment.type === 'generated' ? 'Réponse :' : 'Script :'}
-            </h3>
-            <p className="text-gray-700">
-              {segment.type === 'prerecorded' ? segment.script : segment.text}
-            </p>
+        )}
+      
+        {/* Hidden Audio Element */}
+        <audio 
+          ref={audioRef} 
+          onEnded={handleEnded}
+          onError={handleError}
+          className="hidden" // Hide default controls
+        />
+
+        {error && (
+          <div className="text-red-500 text-sm mb-2 flex flex-col items-center">
+            <p>{error}</p>
+            <button
+              onClick={togglePlayPause} // Retry by toggling play
+              className="mt-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        
+        <div className="text-content mt-4">
+          {state.currentPhase === 'LISTENING' && liveTranscription ? (
+            <div className="live-transcription bg-gray-700 p-3 rounded">
+              <h3 className="text-lg font-semibold mb-2 text-white">Question en cours :</h3>
+              <p className="text-gray-300">{liveTranscription}</p>
+            </div>
+          ) : (
+            <div className={`script ${
+              segment.type === 'generated' ? 'bg-blue-700' : 'bg-gray-700'
+            } p-3 rounded`}>
+              <h3 className="text-lg font-semibold mb-2 text-white">
+                {segment.type === 'generated' ? 'Réponse :' : 'Script :'}
+              </h3>
+              <p className="text-gray-300">
+                {segment.type === 'prerecorded' ? segment.script : segment.text}
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {segment.id === 'question-invite' && onRaiseHand && (
+          <div className="mt-4 flex justify-center">
+            <RaiseHandButton 
+              onRaiseHand={onRaiseHand} 
+              disabled={disabled} 
+            />
+          </div>
+        )}
+        
+        {/* Debug info */}
+        {segment.type === 'generated' && (
+          <div className="debug-info text-xs text-gray-400 mt-2">
+            <p>Audio source: {segment.audioSrc || 'Using stream'}</p>
+            <p>Ready state: {audioRef.current?.readyState}</p>
+            <p>Media Source state: {mediaSourceRef.current?.readyState}</p>
           </div>
         )}
       </div>
-      
-      {segment.id === 'question-invite' && onRaiseHand && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <RaiseHandButton 
-            onRaiseHand={onRaiseHand} 
-            disabled={disabled} 
-          />
-        </div>
-      )}
-      
-      {/* Debug info */}
-      {segment.type === 'generated' && (
-        <div className="debug-info text-xs text-gray-500 mt-2">
-          <p>Audio source: {segment.audioSrc || 'Using stream'}</p>
-          <p>Ready state: {audioRef.current?.readyState}</p>
-          <p>Media Source state: {mediaSourceRef.current?.readyState}</p>
-        </div>
-      )}
     </div>
   );
 };
+
+export default AudioPlayer;
