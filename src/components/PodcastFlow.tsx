@@ -1,8 +1,10 @@
+// src/components/PodcastFlow.tsx
+
 import React from 'react';
 import AudioPlayer from './AudioPlayer';
+import Script from './Script'; // Import the new Script component
 import { RaiseHandButton } from './RaiseHandButton';
 import { usePodcastOrchestrator } from '../hooks/usePodcastOrchestrator';
-import PlayerControlsButton from './PlayerControlsButton';
 
 export const PodcastFlow: React.FC = () => {
   const { 
@@ -18,9 +20,6 @@ export const PodcastFlow: React.FC = () => {
 
   return (
     <div className="podcast-flow w-full flex flex-col items-center justify-center flex-1 relative">
-      
-
-
       {/* Audio Player */}
       {currentSegment ? (
         <AudioPlayer 
@@ -34,6 +33,14 @@ export const PodcastFlow: React.FC = () => {
         />
       ) : (
         <div className="text-white">Loading podcast...</div>
+      )}
+
+      {/* Script Component */}
+      {currentSegment && (
+        <Script 
+          segment={currentSegment}
+          liveTranscription={state.recognition.transcript}
+        />
       )}
 
       {/* Raise Hand Button */}

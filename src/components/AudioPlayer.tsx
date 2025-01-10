@@ -228,7 +228,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       </div>
 
       {/* Main Player UI */}
-      <div className="audio-player w-full max-w-2xl mx-auto p-4 bg-gray-800 bg-opacity-75 rounded-lg shadow relative z-10 mt-8">
+      <div className="audio-player w-full max-w-2xl mx-auto p-4 bg-opacity-75 rounded-lg relative z-10 mt-8">
         {isLoading && (
           <div className="loading-indicator text-blue-500 text-center mb-2">
             Loading audio...
@@ -254,27 +254,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             </button>
           </div>
         )}
-        
-        <div className="text-content mt-4">
-          {state.currentPhase === 'LISTENING' && liveTranscription ? (
-            <div className="live-transcription bg-gray-700 p-3 rounded">
-              <h3 className="text-lg font-semibold mb-2 text-white">Question en cours :</h3>
-              <p className="text-gray-300">{liveTranscription}</p>
-            </div>
-          ) : (
-            <div className={`script ${
-              segment.type === 'generated' ? 'bg-blue-700' : 'bg-gray-700'
-            } p-3 rounded`}>
-              <h3 className="text-lg font-semibold mb-2 text-white">
-                {segment.type === 'generated' ? 'Réponse :' : 'Script :'}
-              </h3>
-              <p className="text-gray-300">
-                {segment.type === 'prerecorded' ? segment.script : segment.text}
-              </p>
-            </div>
-          )}
-        </div>
-        
+
         {segment.id === 'question-invite' && onRaiseHand && (
           <div className="mt-4 flex justify-center">
             <RaiseHandButton 
@@ -283,7 +263,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             />
           </div>
         )}
-        
+
         {/* Debug info */}
         {segment.type === 'generated' && (
           <div className="debug-info text-xs text-gray-400 mt-2">
