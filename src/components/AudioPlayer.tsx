@@ -1,11 +1,13 @@
 // src/components/AudioPlayer.tsx
 
+// src/components/AudioPlayer.tsx
+
 import React, { useRef, useEffect, useState } from 'react';
 import { PodcastSegment, GeneratedSegment } from '../types/podcast';
 import { RaiseHandButton } from './RaiseHandButton';
 import { usePodcastContext } from '../store/PodcastContext';
 import AudioVisualizer from './visualizer/AudioVisualizer';
-import PlayerControlsButton from './PlayerControlsButton'; // Import the new component
+import PlayerControlsButton from './PlayerControlsButton';
 
 interface AudioPlayerProps {
   segment: PodcastSegment;
@@ -15,10 +17,11 @@ interface AudioPlayerProps {
   liveTranscription?: string;
   isPlaying: boolean; // Receive isPlaying prop
   togglePlayPause: () => void; // Receive togglePlayPause prop
+  onTimeUpdate?: (currentTime: number, duration: number) => void; // New prop
 }
 
 const isGeneratedSegmentWithStream = (
-  segment: PodcastSegment
+  segment: PodcastSegment,
 ): segment is GeneratedSegment & { audioStream: NonNullable<GeneratedSegment['audioStream']> } => {
   return segment.type === 'generated' && !!segment.audioStream;
 };
@@ -30,13 +33,33 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   disabled,
   liveTranscription,
   isPlaying,
-  togglePlayPause
+  togglePlayPause,
+  onTimeUpdate, // Destructure the new prop
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { state } = usePodcastContext();
   const mediaSourceRef = useRef<MediaSource | null>(null);
+
+  // **New useEffect for handling time updates**
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      if (onTimeUpdate) {
+        console.log('AudioPlayer: Time update', audio.currentTime, audio.duration);
+        onTimeUpdate(audio.currentTime, audio.duration);
+      }
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [onTimeUpdate]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -167,7 +190,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       isSubscribed = false;
       cleanupAudio();
     };
-  }, [segment, isPlaying]);
+  }, [segment, isPlaying]); // Removed onTimeUpdate from dependencies here
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -204,11 +227,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setIsLoading(false);
   };
 
-  // Remove local isPlaying state and togglePlayPause
-
   // Defensive Check: Ensure segment is defined
   if (!segment) {
-    return <div className="text-white">No audio segment available.</div>; // Optional: Alternative Loading or Error Message
+    return <div className="text-white">No audio segment available.</div>;
   }
 
   return (
