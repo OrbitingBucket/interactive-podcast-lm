@@ -1,4 +1,5 @@
 // src/types/podcast.ts
+
 export type PodcastPhase = 
   | 'INITIAL'
   | 'PLAYING'
@@ -25,10 +26,18 @@ export interface GeneratedSegment {
 
 export type PodcastSegment = PreRecordedSegment | GeneratedSegment;
 
+export interface SegmentTiming {
+  startTime: number;
+  duration: number;
+  isComplete: boolean;
+}
+
 export interface PodcastState {
   currentPhase: PodcastPhase;
   segments: PodcastSegment[];
   currentSegmentIndex: number;
+  currentTime: number;  // Added
+  segmentTiming: SegmentTiming;  // Added
   recognition: {
     isActive: boolean;
     transcript: string;

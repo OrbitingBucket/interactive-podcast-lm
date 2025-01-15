@@ -1,0 +1,25 @@
+/* src/styles/animations.css */
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in forwards;
+    opacity: 0;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .current-line {
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 3px solid #4f46e5;
+    padding-left: 1rem;
+    margin-left: -1rem;
+    border-radius: 4px;
+  }

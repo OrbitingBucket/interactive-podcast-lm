@@ -21,6 +21,7 @@ export const PodcastFlow: React.FC = () => {
   // State for tracking current time and duration
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
 
   // Callback to handle time updates from AudioPlayer
   const handleTimeUpdate = (current: number, dur: number) => {
@@ -28,11 +29,23 @@ export const PodcastFlow: React.FC = () => {
     setDuration(dur);
   };
 
-  // Reset time and duration when segment changes
+  // Reset states when segment changes
   useEffect(() => {
     setCurrentTime(0);
     setDuration(0);
+    setHasStartedPlaying(false);
   }, [currentSegment]);
+
+  // Update hasStartedPlaying when playback starts
+  useEffect(() => {
+    if (isPlaying && currentTime > 0) {
+      setHasStartedPlaying(true);
+    }
+  }, [isPlaying, currentTime]);
+
+  const handlePlayPause = () => {
+    togglePlayPause();
+  };
 
   return (
     <div className="podcast-flow w-full flex flex-col items-center justify-center flex-1 relative mb-64">
@@ -45,20 +58,20 @@ export const PodcastFlow: React.FC = () => {
           disabled={!canRaiseHand}
           liveTranscription={state.recognition.transcript}
           isPlaying={isPlaying}
-          togglePlayPause={togglePlayPause}
-          onTimeUpdate={handleTimeUpdate} // Pass the callback
+          togglePlayPause={handlePlayPause}
+          onTimeUpdate={handleTimeUpdate}
         />
       ) : (
         <div className="text-white">Loading podcast...</div>
       )}
 
-      {/* Script Component */}
-      {currentSegment && (
+      {/* Script Component - Only show when segment has started playing */}
+      {currentSegment && hasStartedPlaying && (
         <Script 
           segment={currentSegment}
           liveTranscription={state.recognition.transcript}
-          currentTime={currentTime} // Pass current time
-          duration={duration}       // Pass duration
+          currentTime={currentTime}
+          duration={duration}
         />
       )}
 
